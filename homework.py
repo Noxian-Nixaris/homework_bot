@@ -39,9 +39,12 @@ def check_tokens():
 
 def send_message(bot, message):
     """Отправляем сообщение в чат."""
-    chat_id = TELEGRAM_CHAT_ID
-    bot.send_message(chat_id=chat_id, text=message)
-    logging.debug('Сообщение отправлено')
+    try:
+        chat_id = TELEGRAM_CHAT_ID
+        bot.send_message(chat_id=chat_id, text=message)
+        logging.debug('Сообщение отправлено')
+    except Exception as error:
+        logging.error(error)
 
 
 def get_api_answer(timestamp):
@@ -110,16 +113,14 @@ def main():
         try:
             response = get_api_answer(timestamp)
             message = parse_status(response)
-            if message == first_message:
-                logging.debug('Нет обновлений статуса')
-            else:
-                send_message(bot, message)
-                first_message = message
-
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logging.error(error, exc_info=True)
-            return message
+        if message == first_message:
+            logging.debug('Нет обновлений статуса')
+        else:
+            send_message(bot, message)
+            first_message = message
         time.sleep(RETRY_PERIOD)
 
 
