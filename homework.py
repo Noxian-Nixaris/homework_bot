@@ -12,7 +12,8 @@ load_dotenv()
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='main.log'
+    filename='main.log',
+    filemode='w'
 )
 
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
