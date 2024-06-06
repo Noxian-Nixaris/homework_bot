@@ -1,8 +1,10 @@
 import logging
 import os
-import requests
+import sys
 import time
+from http import HTTPStatus
 
+import requests
 from dotenv import load_dotenv
 from telebot import TeleBot
 
@@ -11,8 +13,10 @@ load_dotenv()
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='main.log',
-    filemode='w'
+    handlers=[
+        logging.FileHandler("main.log"),
+        logging.StreamHandler()
+    ]
 )
 
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
@@ -29,11 +33,12 @@ HOMEWORK_VERDICTS = {
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
 
+ONE_WEEK = 604800
+
 
 def check_tokens():
     """Проверяем наличие переменных окружения."""
-    if PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID:
-        return True
+    return all((PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID))
 
 
 def send_message(bot, message):
@@ -51,49 +56,34 @@ def get_api_answer(timestamp):
     headers = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
     payload = {'from_date': timestamp}
     try:
-        homework_statuses = requests.get(
+        response = requests.get(
             ENDPOINT, headers=headers, params=payload
         )
-        homework = homework_statuses.json()
-        if check_response(homework):
-            logging.debug('Ответ сервера получен.')
-            return homework.get('homeworks')[0]
-        logging.error('Не верный ответ сервера.')
-        return dict()
+        if response.status_code != HTTPStatus.OK:
+            raise TypeError('Неверный ответ сервера')
+        return response.json()
     except requests.RequestException as error:
-        logging.error(error)
+        raise TypeError(error)
 
 
 def check_response(response):
     """Проверяем корректность ответа от Практикума."""
-    if type(response) is dict:
-        if 'homeworks' in response:
-            answer = response.get('homeworks')
-            if type(answer) is list:
-                if len(answer) > 0:
-                    return True
-                else:
-                    logging.error('Cприсок "homeworks" пуст')
-                    return False
-            else:
-                logging.error('Значение homeworks - не список.')
-                raise TypeError()
-        else:
-            logging.error('Ключ "homeworks" не найден')
-            raise KeyError()
-    else:
-        logging.error('Ответ сервера не словарь.')
-        raise TypeError()
+    if not isinstance(response, dict):
+        raise TypeError('Ответ сервера не словарь.')
+    if 'homeworks' not in response:
+        raise KeyError('Ключ "homeworks" не найден.')
+    answer = response.get('homeworks')
+    if not isinstance(answer, list):
+        raise TypeError('Значение homeworks - не список.')
+    return response.get('homeworks')
 
 
 def parse_status(homework):
     """Получаем статус домашней работы из ответа сервера."""
     if homework.get('status') not in HOMEWORK_VERDICTS:
-        logging.error('Неправильный статус.')
-        raise KeyError()
+        raise KeyError('Неправильный статус.')
     if 'homework_name' not in homework:
-        logging.error('Нет имени домашней работы.')
-        raise KeyError()
+        raise KeyError('Нет имени домашней работы.')
     verdict_key = homework.get('status')
     homework_name = homework.get('homework_name')
     verdict = HOMEWORK_VERDICTS.get(verdict_key)
@@ -104,22 +94,27 @@ def main():
     """Основная логика работы бота."""
     if not check_tokens():
         logging.critical('Отсутствует обязательная переменная окружения')
-        raise Exception()
+        sys.exit()
     bot = TeleBot(TELEGRAM_TOKEN)
-    timestamp = int(time.time()) - 1209600
-    first_message = None
+    timestamp = int(time.time()) - ONE_WEEK
+    last_message = None
     while True:
         try:
             response = get_api_answer(timestamp)
-            message = parse_status(response)
+            homework = check_response(response)
+            timestamp = response.get('current_date') - ONE_WEEK
+            if len(homework) > 0:
+                message = parse_status(homework[0])
+            else:
+                message = 'Список домашних работ за период пуст'
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            logging.error(error, exc_info=True)
-        if message == first_message:
+            logging.exception(error)
+        if message == last_message:
             logging.debug('Нет обновлений статуса')
         else:
             send_message(bot, message)
-            first_message = message
+            last_message = message
         time.sleep(RETRY_PERIOD)
 
 
