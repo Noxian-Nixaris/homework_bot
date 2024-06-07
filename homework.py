@@ -41,8 +41,7 @@ def send_message(bot, message):
         bot.send_message(chat_id=chat_id, text=message)
         logging.debug('Сообщение отправлено')
     except Exception:
-        raise MessageError()
-
+        raise MessageError('Cообщение не отправлено')
 
 def get_api_answer(timestamp):
     """Запрашиваем данные по домашней работе с Практикума."""
@@ -106,12 +105,15 @@ def main():
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logging.exception(message)
-        if message == last_message:
-            logging.debug('Нет обновлений статуса')
-        else:
-            send_message(bot, message)
-            timestamp = response.get('current_date')
-            last_message = message
+        try:
+            if message == last_message:
+                timestamp = response.get('current_date')
+                logging.debug('Нет обновлений статуса')
+            else:
+                send_message(bot, message)
+                last_message = message
+        except Exception as error:
+            logging.exception(error)
         time.sleep(RETRY_PERIOD)
 
 

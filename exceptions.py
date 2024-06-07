@@ -1,19 +1,23 @@
-class MessageError(Exception):
+class Errors(Exception):
+    """Базовый класс исключений."""
+
+    def __init__(self, message):
+        self.message = message
+
+
+class MessageError(Errors):
     """Исключение для ошибок отправки сообщений."""
 
-    def __init__(self, message):
-        self.message = message
+    pass
 
 
-class ResponseError(Exception):
+class ResponseError(Errors):
     """Исключение для ответов сервера кроме HTTPStatus.OK."""
 
-    def __init__(self, message):
-        self.message = message
+    pass
 
 
-class RequestError(Exception):
+class RequestError(Errors):
     """Исключение для ошибки запроса сервера."""
 
-    def __init__(self, message):
-        self.message = message
+    pass
