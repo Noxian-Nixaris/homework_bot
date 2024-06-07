@@ -108,10 +108,10 @@ def main():
             else:
                 send_message(bot, message)
                 timestamp = response.get('current_date')
-                last_message = message
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logging.exception(message)
+        last_message = message
         time.sleep(RETRY_PERIOD)
 
 
