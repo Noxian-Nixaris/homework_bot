@@ -52,12 +52,12 @@ def get_api_answer(timestamp):
         response = requests.get(
             ENDPOINT, headers=headers, params=payload
         )
-        if response.status_code != HTTPStatus.OK:
-            raise ResponseError(f'Ответ сервера: {response.status_code}')
     except requests.RequestException:
         raise RequestError(
             f'Ошибка запроса к серверу {ENDPOINT}, {headers}, {payload}'
         )
+    if response.status_code != HTTPStatus.OK:
+        raise ResponseError(f'Ответ сервера: {response.status_code}')
     return response.json()
 
 
@@ -103,18 +103,15 @@ def main():
                 message = parse_status(homeworks[0])
             else:
                 message = 'Список домашних работ за период пуст'
-        except Exception as error:
-            message = f'Сбой в работе программы: {error}'
-            logging.exception(message)
-        try:
             if message == last_message:
-                timestamp = response.get('current_date')
                 logging.debug('Нет обновлений статуса')
             else:
                 send_message(bot, message)
+                timestamp = response.get('current_date')
                 last_message = message
         except Exception as error:
-            logging.exception(error)
+            message = f'Сбой в работе программы: {error}'
+            logging.exception(message)
         time.sleep(RETRY_PERIOD)
 
 
