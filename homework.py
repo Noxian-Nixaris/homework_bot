@@ -43,6 +43,7 @@ def send_message(bot, message):
     except Exception:
         raise MessageError('Cообщение не отправлено')
 
+
 def get_api_answer(timestamp):
     """Запрашиваем данные по домашней работе с Практикума."""
     headers = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
