@@ -111,6 +111,13 @@ def main():
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logging.exception(message)
+            try:
+                if message == last_message:
+                    logging.debug('Нет обновлений статуса')
+                else:
+                    send_message(bot, message)
+            except Exception:
+                logging.exception('Ошибка отправки сообщения об ошибке.')
         last_message = message
         time.sleep(RETRY_PERIOD)
 
